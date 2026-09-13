@@ -1,0 +1,54 @@
+name: Deploy (main)
+
+on:
+  push: null
+  workflow_dispatch: {}
+
+env:
+  AWS_REGION: "${{ secrets.LOCATION_NORMALIZED }}"
+  VM_USER: "root-doc"
+  VM_HOST: "vmfront-${{ secrets.TEAM_NAME }}.internal.doc.${{ env.AWS_REGION }}"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ─── Install tools ──────────────────────────────────────────────
+      - name: Install tools
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq curl unzip openssh-client
+
+      # ─── Build Angular ──────────────────────────────────────────────
+      
+      
+
+      # ─── Setup SSH ──────────────────────────────────────────────────
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      # ─── Upload build to VM ─────────────────────────────────────────
+      - name: Upload build to VM
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p 8022 ${{ env.VM_USER }}@${{ env.VM_HOST }} "sudo mkdir -p /tmp/front && sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} /tmp/front"
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -P 8022 -r dist/front/* ${{ env.VM_USER }}@${{ env.VM_HOST }}:/tmp/front/
+
+      # ─── Deploy to Nginx ────────────────────────────────────────────
+      - name: Deploy to Nginx web root
+        run: |
+          ssh -i ~/.ssh/id_rsa \
+            -o StrictHostKeyChecking=no \
+            -T -q \
+            -p 8022 \
+            ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOF'
+          sudo rm -rf /usr/share/nginx/html/*
+          sudo cp -r /tmp/front/* /usr/share/nginx/html/
+          sudo systemctl restart nginx
+          EOF
+
