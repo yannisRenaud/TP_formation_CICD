@@ -1,0 +1,84 @@
+name: Deploy (main)
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+env:
+  AWS_REGION: "${{ secrets.LOCATION_NORMALIZED }}"
+  VM_USER: "root-doc"
+  VM_HOST: "vmfront-${{ secrets.TEAM_NAME }}.internal.doc.${{ env.AWS_REGION }}"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Angular application
+        run: npm run build -- --configuration production   
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: front-build
+          path: dist/front/*
+
+  deploy:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ─── Get build artifact ──────────────────────────────────────────────
+      - name: Create build directory
+        run: mkdir -p dist/front/
+
+      - name: Download artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: front-build
+          path: dist/front/
+
+      # ─── Install tools ──────────────────────────────────────────────
+      - name: Install tools
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq curl unzip openssh-client
+
+      # ─── Setup SSH ──────────────────────────────────────────────────
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      # ─── Upload build to VM ─────────────────────────────────────────
+      - name: Upload build to VM
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p 8022 ${{ env.VM_USER }}@${{ env.VM_HOST }} "sudo mkdir -p /tmp/front && sudo chown -R ${{ env.VM_USER }}:${{ env.VM_USER }} /tmp/front"
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -P 8022 -r dist/front/* ${{ env.VM_USER }}@${{ env.VM_HOST }}:/tmp/front/
+
+      # ─── Deploy to Nginx ────────────────────────────────────────────
+      - name: Deploy to Nginx web root
+        run: |
+          ssh -i ~/.ssh/id_rsa \
+            -o StrictHostKeyChecking=no \
+            -T -q \
+            -p 8022 \
+            ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOF'
+          sudo rm -rf /usr/share/nginx/html/*
+          sudo cp -r /tmp/front/* /usr/share/nginx/html/
+          sudo systemctl restart nginx
+          EOF
+
