@@ -28,7 +28,7 @@ jobs:
         run: npm run build -- --configuration production   
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: front-build
           path: dist/front/*
@@ -44,7 +44,7 @@ jobs:
         run: mkdir -p dist/front/
 
       - name: Download artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: front-build
           path: dist/front/
