@@ -1,0 +1,33 @@
+---
+name: Lint
+
+on: # yamllint disable-line rule:truthy
+  push: null
+  pull_request: null
+
+permissions: {}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    permissions:
+      ## Contents passé à write (au lieu de read) pour corriger
+      # les problèmes d'accès API.
+      # "statuses" n'étant pas géré par gitea, c'est la méthode pour habiliter le token
+      # https://docs.gitea.com/usage/actions/token-permissions/#supported-scopes
+      
+      # contents permission to clone the repository
+      contents: write
+      ...
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          # super-linter needs the full git history to get the
+          # list of files that changed across commits
+          github-server-url: 'https://gitea1.eu-west-3.cgichaos.com'
+          fetch-depth: 0
+          persist-credentials: false
