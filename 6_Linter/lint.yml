@@ -28,6 +28,6 @@ jobs:
         with:
           # super-linter needs the full git history to get the
           # list of files that changed across commits
-          github-server-url: 'https://gitea1.eu-west-3.cgichaos.com'
+          github-server-url: 'https://giteaX.eu-west-3.cgichaos.com'
           fetch-depth: 0
           persist-credentials: false
