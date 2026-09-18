@@ -1,8 +1,18 @@
 ## Mise en place des prérequis
 
 - Accéder à l'instance gitea de sa Team
-- Cloner le dépôt des ressources dans le vsCode distant
-- Cloner le dépôt du front dans le vsCode distant
+- Cloner le dépôt des ressources et du front dans le vsCode distant :
+    - Truster le dossier pour activer la gestion des sources
+    - Ouvrir une console :
+```bash
+sudo su -
+cd /workspaces
+git clone https://giteaX.eu-west-3.cgichaos.com/team1/front.git
+git clone https://github.com/yannisRenaud/TP_formation_CICD.git
+chown -R coder:coder front
+chown -R coder:coder TP_formation_CICD/
+```
+
 
 ## L'environnement du TP
 Environnement du Chaos Game CGI utilisé pour le TP
